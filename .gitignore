@@ -1,3 +1,15 @@
+**/.**
+**/__pycache__/**
+**/Others/**
+**/venv/**
+**/tests_valuetools/**
+**/output/**
+**/industrial_networks/**
+**/input/**
+**/performance_paper/**
+**/examples/**
+optimization/tests_comparisons/**
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
