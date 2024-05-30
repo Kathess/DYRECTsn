@@ -83,6 +83,9 @@ python3 optimization/demo_call.py
 ```
 Tested with Python 3.6 and PyCharm 2021.2.2.
 
+## License
+This project is licensed under the GNU Lesser General Public License - see the [LICENSE](LICENSE) file for details.
+
 ## Report Bugs and other Issues
 
 Reports on bugs and other issues are very welcome, especially due to many quite recent changes.
