@@ -266,8 +266,6 @@ if __name__ == "__main__":
     print("Successfully reserved flows: ", successfully_reserved_flows, " of ", len(flow_list))
     print("Reserved Flows:", reserved_flows)
 
-    flow = flow_list[-1]
-    print("------- Remove flow:", flow.flowID, "-------")
     # Optionally, here is how to remove flows:
     flow = flow_list[-1]
     if flow.flowID in results['graph_state']['reserved_flows']:
