@@ -141,7 +141,7 @@ class CBS_system:
                 self.id))
 
     def slope_for_delay(self, arrival: List[Tuple[Decimal, Decimal, Decimal]], delay: Decimal, queue: int,
-                        maxpackets=None, slopes=None) -> Union[Decimal, int]:
+                        maxpackets=None, slopes=None, gate=None) -> Union[Decimal, int]:
         """
         calculates the min. idleslope that is needed to guarantee the *delay* at *queue* with assuming the *arrival*
 
@@ -179,8 +179,11 @@ class CBS_system:
             s_sum += self.sumHelper(j, slopes, maxpackets)
 
         rem_slope = i_sum - self.linkrate
-        if rem_slope != 0:
+        if rem_slope <= 0:
             latency_t = (s_sum - self.maxpacket_be) / rem_slope
+            # for gcl
+            if gate:
+                latency_t += gate[1]
         else:
             return -1
 
@@ -194,6 +197,11 @@ class CBS_system:
             new_idleslope = point[1] / (point[0] + delay - latency_t)
             if new_idleslope > maxslope:
                 maxslope = new_idleslope
+
+        # for gcl
+        if gate:
+            # increase max_slope to account for gate closing times
+            maxslope = maxslope / (1-(gate[1]/gate[0]))
 
         # idleslope must be greater or equal to long term arrival rate
         if 0 < maxslope < arrival[-1][2]:
@@ -298,7 +306,7 @@ class CBS_system:
     # ----------------------------------------------------------------------------------------------------------------
     # -----------------------------------------  Guarantee Calculation  ----------------------------------------------
     # ----------------------------------------------------------------------------------------------------------------
-    def getdelay(self, queue: int) -> Decimal:
+    def getdelay(self, queue: int, gate=None) -> Decimal:
         """
         calculate max. delay for each kink (x,y) in arrival curve of *queue* and return largest
         D = T + y/R -x
@@ -306,12 +314,18 @@ class CBS_system:
         :param queue: queue for which the delay is wanted
         :return: max. delay in s
         """
+        slope = self.slopes[queue]
+        # for gcl
+        if gate:
+            slope = self.slopes[queue] * (1-(gate[1]/gate[0]))
         delays = []
-        if self.slopes[queue] == 0:
+        if slope == 0:
             return Decimal('inf')
 
-        T = self.vmax[queue] / self.slopes[queue]
-        R = self.slopes[queue]
+        T = self.vmax[queue] / slope
+        if gate:
+            T += gate[1]
+        R = slope
         for arrival_tuple in self.arrivalpoints:
             delays.append(T + arrival_tuple[1] / R - arrival_tuple[0])
 

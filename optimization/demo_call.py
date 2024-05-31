@@ -18,6 +18,8 @@
 #     along with DYRECTsn.  If not, see <http://www.gnu.org/licenses/>.
 #
 from collections import defaultdict
+
+import networkx as nx
 from _decimal import Decimal
 from dynamic_reservation.environment.default_topologies import example_topology
 from dynamic_reservation.environment.flow import Flow
@@ -116,6 +118,11 @@ if __name__ == "__main__":
     # unicast flow with given priority
     flow_list.append(Flow(flowID='F1', source=22, sinks=[44], data_per_interval=1156, sending_interval=2500e-6,
                           deadline=1e-3, max_frame_size=1156, priority=1, frames_per_interval=1, redundancy=False))
+    # unicast flow with given path
+    given_path_flow = Flow(flowID='F1_v2', source=22, sinks=[44], data_per_interval=1156, sending_interval=2500e-6,
+                          deadline=1e-3, max_frame_size=1156, frames_per_interval=1, redundancy=False)
+    given_path_flow.paths = [[(22, 2, 1), (2, 44, 1)]] # notation [path1, path2] with path = [hop1, hop2, ...], with hop = (from, to, prio)
+    flow_list.append(given_path_flow)
     # multicast flow with two frames per interval, if priority=None, the framework derives the priority itself
     flow_list.append(Flow(flowID='F2', source=22, sinks=[33, 44], data_per_interval=608, sending_interval=5000e-6,
                           deadline=1e-3, max_frame_size=608, priority=None, frames_per_interval=2, redundancy=False))
@@ -132,7 +139,7 @@ if __name__ == "__main__":
     # Now, the network is pre-configured with upper bounds on the queue delays.
     # (This is called MDM model of the publication.)
     # If you already know the delay bounds, you can skip this step, then set skip = True
-    skip = False
+    skip = True
 
     # The delay bounds are the only variable not given in seconds. Instead, they are
     # in 10 microseconds. So a delay bound of 2 is 20 microseconds. This is because
@@ -214,6 +221,15 @@ if __name__ == "__main__":
                                     besteffort_perc=besteffort_perc, max_packetsize=max_best_effort_frame_size,
                                     output=False, constant_priority=constant_priority)
 
+    # ------------------------- add time-triggered gates ---------------------------
+    # add gate control list per hop - important: only one gate opening time (trivial calculation applied)
+    # edge['gcl'] = (period, open time) in seconds
+    # use the following syntax to add gates: dummy values for the output port at node 1 to node 3:
+    # period = 500 microsec., gate open time = 50 microsec.
+    nx.set_edge_attributes(graph_state['simple_graph'], {(1, 3): {'gcl': (Decimal(0.0005), Decimal(0.00005))}})
+    nx.set_edge_attributes(graph_state['simple_graph'], {(3, 33): {'gcl': (Decimal(0.0005), Decimal(0.00005))}})
+    # ------------------------------------------------------------------------------
+
     # Handle new flow requests, in this example, we use the same flows as during offline optimization
     i = 0
     successfully_reserved_flows = 0
@@ -239,11 +255,13 @@ if __name__ == "__main__":
     print("Successfully reserved flows: ", successfully_reserved_flows, " of ", len(flow_list))
     print("Reserved Flows:", reserved_flows)
 
-    print("------- Remove flow -------")
+    flow = flow_list[-1]
+    print("------- Remove flow:", flow.flowID, "-------")
     # Optionally, here is how to remove flows:
     flow = flow_list[-1]
-    results_del = remove_flow(flow=flow, graph_state=graph_state)
-    print_flow_information(flow, results_del)
-    reserved_flows = results_del['graph_state']['reserved_flows']
+    if flow.flowID in results['graph_state']['reserved_flows']:
+        results_del = remove_flow(flow=flow, graph_state=graph_state)
+        print_flow_information(flow, results_del)
+        reserved_flows = results_del['graph_state']['reserved_flows']
     print("Reserved Flows After Removal:", reserved_flows)
     print("------- Finished -------")

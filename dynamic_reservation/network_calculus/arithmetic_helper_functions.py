@@ -34,8 +34,12 @@ def get_tsn_arrival(C: Decimal, flow: Flow) -> Tuple[List[Tuple[Decimal, Decimal
     CMI = flow.sending_interval
     # rate for TSN is: r = m/CMI
     r = m / CMI
+    # to remove:
+    max_frame = flow.max_frame_size
+    if m < 0:
+        max_frame = -1 * flow.max_frame_size
     # packetized burst for TSN: b = m - r * (m-l)/C
-    b = m - r * (m - flow.max_frame_size) / C
+    b = m - r * (m - max_frame) / C
     # previously: b = m * (Decimal('1') - (r / C))
     return [(Decimal('0'), b, r)], r
 

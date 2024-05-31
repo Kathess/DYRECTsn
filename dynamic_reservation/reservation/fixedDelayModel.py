@@ -175,7 +175,7 @@ def add_flow(flow,
     results = {'success': success}
     if success:
         graph_state['reserved_flows'].append(flow.flowID)
-    statistics = get_statistics(graph_state['graph'], flow, success)
+    statistics = get_statistics(graph_state, flow, success)
     results['graph_state'] = graph_state
     results['statistics'] = statistics
 
@@ -245,7 +245,7 @@ def remove_flow(flow,
 
     # ----------------------------------  Calculate statistics  -------------------------------------
 
-    statistics = get_statistics(graph_state['graph'], flow, success)
+    statistics = get_statistics(graph_state, flow, success)
 
     graph_state['reserved_flows'].remove(tmp_flowID)
 
@@ -614,7 +614,15 @@ def check_path(graph_state, path: List[Tuple], flow: Flow, redundant_flow=None) 
             if new_packetsizes[e2] < flow.max_frame_size:
                 new_packetsizes[e2] = flow.max_frame_size
 
-            new_slope = CBS.slope_for_delay(arrival=sum_arrival,
+            # for gcl
+            if graph_state['simple_graph'].edges[e0, e1].get('gcl', False):
+                gate = graph_state['simple_graph'].edges[e0, e1]['gcl']
+                new_slope = CBS.slope_for_delay(arrival=sum_arrival,
+                                            maxpackets=new_packetsizes,
+                                            delay=curr_edge['delay'], queue=e2,
+                                            gate=gate)
+            else:
+                new_slope = CBS.slope_for_delay(arrival=sum_arrival,
                                             maxpackets=new_packetsizes,
                                             delay=curr_edge['delay'], queue=e2)
 
@@ -654,7 +662,16 @@ def check_path(graph_state, path: List[Tuple], flow: Flow, redundant_flow=None) 
                     prio = queue['priority']
                     # calculate new idleslope for this priority
                     if new_slopes[prio] > 0:  # but only if something has been reserved
-                        lower_slope = queueCBS.slope_for_delay(arrival=None,
+                        if graph_state['simple_graph'].edges[e0, e1].get('gcl', False):
+                            gate = graph_state['simple_graph'].edges[e0, e1]['gcl']
+                            lower_slope = queueCBS.slope_for_delay(arrival=None,
+                                                               delay=queue['delay'],
+                                                               queue=prio,
+                                                               slopes=new_slopes,
+                                                               maxpackets=new_packetsizes,
+                                                               gate=gate)
+                        else:
+                            lower_slope = queueCBS.slope_for_delay(arrival=None,
                                                                delay=queue['delay'],
                                                                queue=prio,
                                                                slopes=new_slopes,
@@ -828,7 +845,8 @@ def reserve_flow(graph_state, flow: Flow, path: List, newslopes,
         hop_nr += 1
 
 
-def get_statistics(graph, flow, success):
+def get_statistics(graph_state, flow, success):
+    graph = graph_state['graph']
     used_rate = {}
     used_backlogs = {}
     used_slopes = {}
@@ -872,7 +890,12 @@ def get_statistics(graph, flow, success):
                     budget_path_delay += curr_edge['CBS'].getProcDelay()
                     path_delay += curr_edge['CBS'].getProcDelay()
                     # transmission and queueing delay for CBS devices
-                    path_delay += curr_edge['CBS'].getdelay(e2)
+                    # for gcl
+                    if graph_state['simple_graph'].edges[e0, e1].get('gcl', False):
+                        gate = graph_state['simple_graph'].edges[e0, e1]['gcl']
+                        path_delay += curr_edge['CBS'].getdelay(e2, gate)
+                    else:
+                        path_delay += curr_edge['CBS'].getdelay(e2)
                 else:
                     # the first link is only link shaped
                     # transmission and queueing delay for talker devices
