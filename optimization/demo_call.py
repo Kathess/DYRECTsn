@@ -116,19 +116,30 @@ if __name__ == "__main__":
 
     flow_list = []
     # unicast flow with given priority
-    flow_list.append(Flow(flowID='F1', source=22, sinks=[44], data_per_interval=1156, sending_interval=2500e-6,
-                          deadline=1e-3, max_frame_size=1156, priority=1, frames_per_interval=1, redundancy=False))
-    # unicast flow with given path
-    given_path_flow = Flow(flowID='F1_v2', source=22, sinks=[44], data_per_interval=1156, sending_interval=2500e-6,
-                          deadline=1e-3, max_frame_size=1156, frames_per_interval=1, redundancy=False)
-    given_path_flow.paths = [[(22, 2, 1), (2, 44, 1)]] # notation [path1, path2] with path = [hop1, hop2, ...], with hop = (from, to, prio)
-    flow_list.append(given_path_flow)
+    flow1 = Flow(flowID='F1', source=22, sinks=[44], data_per_interval=1156, sending_interval=2500e-6,
+                 deadline=1e-3, max_frame_size=1156, priority=1, frames_per_interval=1, redundancy=False)
     # multicast flow with two frames per interval, if priority=None, the framework derives the priority itself
-    flow_list.append(Flow(flowID='F2', source=22, sinks=[33, 44], data_per_interval=608, sending_interval=5000e-6,
-                          deadline=1e-3, max_frame_size=608, priority=None, frames_per_interval=2, redundancy=False))
+    flow2 = Flow(flowID='F2', source=22, sinks=[33, 44, 222], data_per_interval=608, sending_interval=5000e-6,
+                 deadline=1e-3, max_frame_size=608, priority=None, frames_per_interval=2, redundancy=False)
     # redundant flow using FRER with two frames per interval
-    flow_list.append(Flow(flowID='F3', source=11, sinks=[33], data_per_interval=608, sending_interval=125e-6,
-                          deadline=5e-3, max_frame_size=1216, priority=None, frames_per_interval=2, redundancy=True))
+    flow3 = Flow(flowID='F3', source=11, sinks=[44], data_per_interval=608, sending_interval=125e-6,
+                 deadline=5e-3, max_frame_size=1216, priority=None, frames_per_interval=2, redundancy=False)
+    # ------------------------------------ notes on preconfigured paths --------------------------------------
+    # if you want the framework to define the paths, just remove the following path definitions!
+    # definition can be done as [path1,path2,...] where path defines the hops (from, to, prio) in a list, e.g.:
+    flow1.paths = [[(22, 2, 1), (2, 44, 1)]]  # unicast
+    flow2.paths = [[(22, 2, 0), (2, 44, 0)],
+                   [(22, 2, 0), (2, 3, 0), (3, 33, 0)],
+                   [(22, 2, 0), (2, 3, 0), (3, 222, 0)]]  # multicast
+
+    # redundant transmission needs more information, first the path:
+    flow3.paths = [[(11, 1, 0), (1, 2, 0), (2, 3, 0), (3, 33, 0)], [(11, 1, 0), (1, 3, 0), (3, 33, 0)]]
+    # and then at which nodes (node IDs) the frames should be duplicated and eliminated/merged:
+    flow3.srf_config['start_node'] = 1 # after node 1, the frames are duplicated
+    flow3.srf_config['end_node'] = 3 # at node 3, the frames are merged
+    # note: in end-notes, non-preemptive strict priority scheduling is assumed,
+    # where all flows have the highest priority
+    flow_list.extend([flow2, flow1, flow3])
     max_best_effort_frame_size = Decimal('12240')
 
     # The paths can also be statically set in this way:

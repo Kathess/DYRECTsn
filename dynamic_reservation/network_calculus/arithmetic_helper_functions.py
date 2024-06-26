@@ -17,6 +17,7 @@
 #     You should have received a copy of the GNU Lesser General Public License
 #     along with DYRECTsn.  If not, see <http://www.gnu.org/licenses/>.
 #
+from bisect import bisect_left
 from decimal import Decimal
 from typing import List, Tuple
 from dynamic_reservation.environment.flow import Flow
@@ -34,13 +35,12 @@ def get_tsn_arrival(C: Decimal, flow: Flow) -> Tuple[List[Tuple[Decimal, Decimal
     CMI = flow.sending_interval
     # rate for TSN is: r = m/CMI
     r = m / CMI
-    # to remove:
     max_frame = flow.max_frame_size
+    # to remove:
     if m < 0:
-        max_frame = -1 * flow.max_frame_size
+        C *= -1
     # packetized burst for TSN: b = m - r * (m-l)/C
     b = m - r * (m - max_frame) / C
-    # previously: b = m * (Decimal('1') - (r / C))
     return [(Decimal('0'), b, r)], r
 
 
@@ -156,7 +156,7 @@ def nextIntersection(pointbefore: Tuple[Decimal, Decimal, Decimal], shaperrate: 
     return intersection_x, intersection_y
 
 
-def linkrateIntersection(firstcurve: List[Tuple[Decimal, Decimal, Decimal]], rate: Decimal, l_max: Decimal) \
+def linkrateIntersection(portcurve: List[Tuple[Decimal, Decimal, Decimal]], linkrate: Decimal, max_link_packet: Decimal) \
         -> Tuple[Decimal, Decimal, Decimal]:
     """
     between (link)rate + l_max and a curve
@@ -165,47 +165,54 @@ def linkrateIntersection(firstcurve: List[Tuple[Decimal, Decimal, Decimal]], rat
     :param l_max: max packet size of the link shaper curve
     :return: intersection of link and curve
     """
+    intersections = []
+    for x, y, r in portcurve:
+        # The equation of the curve segment is y = r*(x - x0) + y0 where (x0, y0) is the starting point
+        # We need to solve r*(x - x0) + y0 = linkrate * x + max_link_packet
+        a = r - linkrate
+        b = y - r * x - max_link_packet
 
-    # find the last point in arrival curve that is bigger than curve derived from rate + l
-    lastupperpoint = -1
-    for i, arrival_tuple in enumerate(firstcurve):
-        if arrival_tuple[1] >= rate * arrival_tuple[0] + l_max:
-            # i is too big, so we need the intersection of the shaper and arrival curve between i and i+1
-            lastupperpoint = i
+        if a == 0:
+            if b == 0:
+                # They are the same line, add the entire line or segment
+                intersections.append((x, y, r))
+            # No intersection as the lines are parallel
+        else:
+            x_intersect = -b / a
+            y_intersect = linkrate * x_intersect + max_link_packet
 
-    # if there is a point bigger than the link rate, we need the intersection, otherwise, we do not need
-    # to change anything in the curve
-    if lastupperpoint > -1:
-        # int_x = (y-rx-l_max) / (C-r)
-        int_sec_point = firstcurve[lastupperpoint]
-        intersectionx = (int_sec_point[1] - int_sec_point[0] * int_sec_point[2] - l_max) / (rate - int_sec_point[2])
-        # int_y = int_x * C
-        intersectiony = intersectionx * rate + l_max
-        intersectionrate = int_sec_point[2]
-        return intersectionx, intersectiony, intersectionrate
-    else:
+            # Check if the intersection is within the valid segment of the portcurve
+            if r != 0:
+                t = (x_intersect - x) / r
+                if int(t) >= 0:
+                    intersections.append((x_intersect, y_intersect, min(r, linkrate)))
+
+    if not intersections:
         return Decimal('0'), Decimal('0'), Decimal('0')
+    else:
+        # Currently only returns the intersection with the smallest x value
+        intersections.sort()
+        return intersections[0]
 
 
 def shift(arrivalcurve, delay):
-    # more than one point at zero?
-    lastpoint = arrivalcurve[0]
-    belowzero = 0
-    for i, arrival_tuple in enumerate(arrivalcurve):
-        if arrival_tuple[0] - delay < Decimal('0'):
-            arrivalcurve[i] = (arrival_tuple[0] - delay, arrival_tuple[1], arrival_tuple[2])
-            belowzero += 1
-            lastpoint = (arrival_tuple[0] - delay, arrival_tuple[1], arrival_tuple[2])
-        else:
-            arrivalcurve[i] = (arrival_tuple[0] - delay, arrival_tuple[1], arrival_tuple[2])
-    # remove belowzero elements from the list, so we have only the highest point at zero
-    arrivalcurve = arrivalcurve[belowzero:]
+    shifted_curve = []
+    interpolated = False
 
-    # add beginning of arrival curve
-    arrivalcurve.insert(0, (Decimal('0'), -1 * lastpoint[0] * lastpoint[2] + lastpoint[1], lastpoint[2]))
+    for x, y, r in arrivalcurve:
+        new_x = x - delay
+        new_y = y
 
-    return arrivalcurve
+        # If the new x is less than 0 and we haven't interpolated yet
+        if new_x < 0 and not interpolated:
+            # Find the point where x = 0
+            interpolated_y = y + r * (-new_x)
+            shifted_curve.append((0, interpolated_y, r))
+            interpolated = True
+        elif new_x >= 0:
+            shifted_curve.append((new_x, new_y, r))
 
+    return shifted_curve
 
 def find_first_matching_index(array1, array2):
     for i, (item1, _, _) in enumerate(array1):
@@ -277,23 +284,38 @@ def shape_to_link(portcurve: List[Tuple[Decimal, Decimal, Decimal]], linkrate: D
     # 2. shape to linkrate_graph + l_max
     x_intersect, y_intersect, r_intersect = linkrateIntersection(portcurve, linkrate, max_link_packet)
 
+    new_curve = []
     # if no intersection was found, leave the curve as it is:
-    if x_intersect == 0:  # das war davor, ist aber vermutlich falsch: and y_intersect == 0:
+    if x_intersect <= 0:  # das war davor, ist aber vermutlich falsch: and y_intersect == 0:
         return portcurve
-    else:
-        # remove lower x points:
-        new_portcurve = portcurve.copy()
-        for element in portcurve:
-            if element[0] < x_intersect:
-                new_portcurve.remove(element)
-            else:
-                break
 
-        # add point first linkrate_graph point and add intersection point
-        new_portcurve.insert(0, (x_intersect, y_intersect, r_intersect))
-        new_portcurve.insert(0, (Decimal('0'), Decimal(str(max_link_packet)), linkrate))
+    for x,y,r in portcurve:
+        # Calculate the y value of the linkrate line at x
+        y_linkrate = linkrate * x + max_link_packet
+        if y_linkrate < y:
+            new_curve.append((x,y_linkrate,linkrate))
+        else:
+            new_curve.append((x,y,r))
 
-    return new_portcurve
+    def insert_in_order(tuples_list, new_tuple):
+        # Extract the x values from the tuples for binary search
+        x_values = [t[0] for t in tuples_list]
+        # Find the insertion point
+        insert_index = bisect_left(x_values, new_tuple[0])
+        # Insert the new tuple at the correct index
+        tuples_list.insert(insert_index, new_tuple)
+        return tuples_list
+
+    # add intersection point
+    new_curve = insert_in_order(new_curve, (x_intersect, y_intersect, r_intersect))
+    tmp_rate = -1
+    for element in new_curve:
+        if tmp_rate == element[0]:
+            new_curve.remove(element)
+        tmp_rate = element[2]
+
+    return new_curve
+
 
 
 def shape_to_shaper(portcurve: List[Tuple[Decimal, Decimal, Decimal]], shaperrate: Decimal,

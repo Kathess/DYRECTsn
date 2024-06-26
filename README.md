@@ -67,21 +67,30 @@ If you use the configuration for the redundant data transmission implemented in 
 }
 ```
 
-## Usage
+## Installation and Usage
 
 For convenience, a demo file was created which explains the main concepts of the library as comments in the code.
 
 To run the demo file, follow the following steps:
 
-1. To set the path, navigate to the uppermost folder (DYRECTsn) and type:
+1. To install the required Python packages, please use the `requirements.txt` file. You can install these packages using pip:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. To set the path, navigate to the uppermost folder (DYRECTsn) and type:
 ```
 export PYTHONPATH=.
 ```
-2. Then run the demo file and check the commentaries for more information:
+3. Then run the demo file and check the commentaries for more information:
 ```
 python3 optimization/demo_call.py
 ```
-Tested with Python 3.6 and PyCharm 2021.2.2.
+Tested with Python 3.6, 3.9, 3.10, and 3.11.
+
+This project includes a GitHub Action for simple testing. The action is configured to automatically run tests when changes are pushed to the repository or a pull request is opened.
+You can find the configuration for this action in the `.github/workflows` directory.
 
 ## License
 This project is licensed under the GNU Lesser General Public License - see the [LICENSE](LICENSE) file for details.

@@ -5,3 +5,7 @@ v1.0.0 "DYRECTsn_v1" (2024-Mar-11)
 v1.0.1 "DYRECTsn_v1" (2024-May-30)
 ---------------------------------
 * licence adapted to LGPL
+
+v1.0.2 "DYRECTsn_v1" (2024-June-26)
+---------------------------------
+* added description how to provide paths as input + some copying issues resolved
