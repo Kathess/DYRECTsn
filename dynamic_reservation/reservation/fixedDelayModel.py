@@ -17,6 +17,7 @@
 #     You should have received a copy of the GNU Lesser General Public License
 #     along with DYRECTsn.  If not, see <http://www.gnu.org/licenses/>.
 #
+import copy
 import heapq
 import itertools
 from itertools import groupby
@@ -222,6 +223,7 @@ def remove_flow(flow,
     success = True
 
     flow.data_per_interval *= -1
+    flow.max_frame_size *= -1
     tmp_flowID = flow.flowID
     flow.flowID = 'del_flow'
 
@@ -610,7 +612,10 @@ def check_path(graph_state, path: List[Tuple], flow: Flow, redundant_flow=None) 
 
             # for all other nodes
             # B3. set I (I >= rate of arrival)
-            new_packetsizes = CBS.maxpacket
+            tmp_packetsizes = copy.deepcopy(CBS.all_packetsizes)
+            if flow.flowID == 'del_flow':
+                tmp_packetsizes[e2].remove(flow.max_frame_size * -1)
+            new_packetsizes = [max(tmp_packetsize, default=Decimal('0')) for tmp_packetsize in tmp_packetsizes]
             if new_packetsizes[e2] < flow.max_frame_size:
                 new_packetsizes[e2] = flow.max_frame_size
 
@@ -783,9 +788,11 @@ def reserve_flow(graph_state, flow: Flow, path: List, newslopes,
 
             # B2. set I's
             for i in curr_link:
-                curr_link[i]['CBS'].setpacketsize(queue=e2, size=flow.max_frame_size)
+                if not flow.flowID == "del_flow":
+                    curr_link[i]['CBS'].setpacketsize(queue=e2, size=flow.max_frame_size)
                 # for the first hop, we consider the slopes to be the flow rates
                 curr_link[i]['CBS'].setidleslopes(newslopes[hop_nr])
+                curr_link[i]['CBS'].all_packetsizes = CBS.all_packetsizes
 
             input_port = edge
 
@@ -809,8 +816,10 @@ def reserve_flow(graph_state, flow: Flow, path: List, newslopes,
 
             # B2. set I's
             for i in curr_link:
-                curr_link[i]['CBS'].setpacketsize(queue=e2, size=flow.max_frame_size)
+                if not flow.flowID == "del_flow":
+                    curr_link[i]['CBS'].setpacketsize(queue=e2, size=flow.max_frame_size)
                 curr_link[i]['CBS'].setidleslopes(newslopes[hop_nr])
+                curr_link[i]['CBS'].all_packetsizes = CBS.all_packetsizes
 
             if not e1 == sink:
                 # since we need the maximum shaper, we need to calculate shaperrate and shaperburst separately

@@ -63,11 +63,12 @@ class CBS_system:
         self.be_slope = be_slope
 
         # CBS information
-        self.maxpacket = [Decimal('0')] * outputqueues
-        self.slopes = [Decimal('0')] * outputqueues
-        self.vmax = [Decimal('0')] * outputqueues  # max. possible credit of queue
-        self.vmin = [Decimal('0')] * outputqueues  # min. possible credit of queue
-        self.shaperburst = [Decimal('inf')] * outputqueues  # the max. allowed burst by the shaper curve
+        self.maxpacket = [Decimal('0') for _ in range(outputqueues)]
+        self.all_packetsizes = [[] for _ in range(outputqueues)]
+        self.slopes = [Decimal('0') for _ in range(outputqueues)]
+        self.vmax = [Decimal('0') for _ in range(outputqueues)]  # max. possible credit of queue
+        self.vmin = [Decimal('0') for _ in range(outputqueues)]  # min. possible credit of queue
+        self.shaperburst = [Decimal('inf') for _ in range(outputqueues)]  # the max. allowed burst by the shaper curve
 
         # arrival information (we have per-edge and per-link arrivals which are shaped separately to form
         # the complete arrival curve for this queue)
@@ -91,10 +92,6 @@ class CBS_system:
         :param slopes: new idle slopes (in bits/s) in the form of a list [slope for prio 0, slope for prio 1, ...]
         """
         assert all(slope >= 0 for slope in slopes), "idleslopes should not be negative, queue_id:{}".format(self.id)
-
-        if sum(self.maxpacket) == 0:
-            print("WARNING: We have not provided the per-queue sizes properly before calculating the service curve.")
-            self.maxpacket = [self.maxpacket_be] * self.outputqueues
 
         self.slopes = slopes
 
@@ -179,7 +176,7 @@ class CBS_system:
             s_sum += self.sumHelper(j, slopes, maxpackets)
 
         rem_slope = i_sum - self.linkrate
-        if rem_slope != 0:
+        if rem_slope <= 0:
             latency_t = (s_sum - self.maxpacket_be) / rem_slope
         else:
             return -1
@@ -231,10 +228,19 @@ class CBS_system:
         :param shaperburst: shaping burst from "port"
         :return:
         """
-        maxpacket = max(self.maxpacket[priority], flow_packetsize)
-        if not virtual:
-            if self.maxpacket[priority] < flow_packetsize:
-                self.maxpacket[priority] = flow_packetsize
+        if flow_packetsize < 0:
+            tmp_packetsizes = self.all_packetsizes[priority].copy()
+            tmp_packetsizes.remove(flow_packetsize*-1)
+            maxpacket = max(tmp_packetsizes, default=Decimal('0'))
+            if not virtual:
+                self.all_packetsizes[priority] = tmp_packetsizes
+                self.maxpacket[priority] = maxpacket
+        else:
+            maxpacket = max(self.maxpacket[priority], flow_packetsize)
+            if not virtual:
+                self.all_packetsizes[priority].append(flow_packetsize)
+                if self.maxpacket[priority] < flow_packetsize:
+                    self.maxpacket[priority] = flow_packetsize
 
         # 1. add to input edge (input port is input edge)
         input_edge = self.addtoinputedge(port, arrival)
@@ -286,7 +292,7 @@ class CBS_system:
         shaped_arrival_2 = shape_to_link(arrival_2, prevlinkrate_2, maxpacket)
         sum_arrival = add(shaped_arrival_1, shaped_arrival_2)
         shaped_sum_arrival = shape_to_8021cb(sum_arrival, arrival_before_replication, path_delay_delta)
-        new_arrival = add(self.arrivalpoints, shaped_sum_arrival)
+        new_arrival = add(self.arrivalpoints.copy(), shaped_sum_arrival)
 
         if virtual:
             return new_arrival
@@ -439,11 +445,11 @@ class CBS_system:
         # calc. the max. shaperburts for all queues
         lenslopes = len(self.slopes)
         for q in range(lenslopes):
-            max_slopes = [Decimal('0')] * lenslopes
+            max_slopes = [Decimal('0') for _ in range(lenslopes)]
             if q > 0:
                 max_slopes[q] = self.linkrate - self.be_slope
-            vmax = self.updatevmax(newslopes=max_slopes, maxpackets=[self.maxpacket_be] * self.outputqueues, queue=q)
-            vmin = self.updatevmin(newslopes=max_slopes, maxpackets=[self.maxpacket_be] * self.outputqueues)
+            vmax = self.updatevmax(newslopes=max_slopes, maxpackets=[self.maxpacket_be for _ in range(self.outputqueues)], queue=q)
+            vmin = self.updatevmin(newslopes=max_slopes, maxpackets=[self.maxpacket_be for _ in range(self.outputqueues)])
             shaperbursts += vmax - vmin[q]
 
         # packetizing effect
