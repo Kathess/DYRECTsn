@@ -39,7 +39,7 @@ If you use this library for research, please include the following reference in 
 @inproceedings{DYRECTsn,
     author={Maile, Lisa and Hielscher, Kai-Steffen and German, Reinhard},
     editor={Kalyvianaki, Evangelia and Paolieri, Marco},
-    title={{Combining Static and Dynamic Traffic with Delay Guarantees in Time-Sensitive Networking},
+    title={{Combining Static and Dynamic Traffic with Delay Guarantees in Time-Sensitive Networking}},
     booktitle={Performance Evaluation Methodologies and Tools},
     year={2024},
     publisher={Springer Nature Switzerland},
