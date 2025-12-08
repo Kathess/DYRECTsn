@@ -1,3 +1,31 @@
+## HAW Branch Notes
+This branch contains scenarios and amendments for joint work of Lisa Maile and Timo Salomon (see Reference).
+If you are interested in reproducing the results or checking out the scenarios please use this branch version (see Scenarios).
+Otherwise, consider switching to the main branch for using the DYRECTsn framework itself. 
+
+### Reference 
+For a reference to the DYRECTsn framework check out the Academic Attribution.
+If you use our or refer to our scenarios, please include the following reference in any resulting publication:
+> Timo Salomon, Lisa Maile, Philipp Meyer, Franz Korf, Thomas C. Schmidt, "Negotiating strict latency limits for dynamic real-time services in vehicular time-sensitive networks," Vehicular Communications, vol. 57, p. 100 985, Feb. 2026. DOI: 10.1016/j.vehcom.2025.100985
+```bibtex
+@Article{smmks-nslld-25,
+  author    = {Timo Salomon and Lisa Maile and Philipp Meyer and Franz Korf and Thomas C. Schmidt},
+  journal   = {Vehicular Communications},
+  title     = {{Negotiating strict latency limits for dynamic real-time services in vehicular time-sensitive networks}},
+  year      = {2026},
+  month     = feb,
+  pages     = {100985},
+  volume    = {57},
+  doi       = {10.1016/j.vehcom.2025.100985},
+  publisher = {Elsevier},
+}
+```
+
+### Scenarios
+The paper has a CBS max latency study and a realistic in car network. See also additional readmes in scenario folders.
+For our paper, we use a comprehensive evaluation environment that also relies on OMNeT++ simulation models.
+Check the full [workspace repository](https://github.com/CoRE-RG/vehcom25-soa-strict-cbs-latency) for the VehCom 2025 paper evaluation setup.
+
 # DYnamic Reliable rEal-time Communication in Tsn (DYRECTsn)
 
 Framework for TSN flow reservation, as described in the PhD Thesis "Reliable Real-Time Communication in Time-Sensitive 
@@ -39,7 +67,7 @@ If you use this library for research, please include the following reference in 
 @inproceedings{DYRECTsn,
     author={Maile, Lisa and Hielscher, Kai-Steffen and German, Reinhard},
     editor={Kalyvianaki, Evangelia and Paolieri, Marco},
-    title={{Combining Static and Dynamic Traffic with Delay Guarantees in Time-Sensitive Networking},
+    title={{Combining Static and Dynamic Traffic with Delay Guarantees in Time-Sensitive Networking}},
     booktitle={Performance Evaluation Methodologies and Tools},
     year={2024},
     publisher={Springer Nature Switzerland},

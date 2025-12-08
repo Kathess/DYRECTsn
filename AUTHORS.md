@@ -20,3 +20,6 @@ Contributions by **Lisa Maile (Kathess)** until May 2024 (inclusive) are subject
 
 Contributions by **Lisa Maile (Kathess)** from June 2024 (ongoing) are subject to the following copyright:  
 **Copyright (C) 2024+ Technische Universität Braunschweig, Lisa Maile**
+
+Contributions by **Timo Salomon/Häckel (thaeckel)** are subject to the following copyright: 
+**Copyright (C) 2024+ HAW Hamburg, Timo Salomon**
