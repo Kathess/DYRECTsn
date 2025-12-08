@@ -23,6 +23,7 @@ import operator
 import random
 import string
 from time import time
+import timeit
 
 import numpy as np
 from _decimal import Decimal
@@ -127,6 +128,7 @@ class PSO:
         converged = 0
         i = 0
         prev_best = -1
+        start = timeit.default_timer()
         while converged < self.converged and i < self.num_iterations:
             for j in range(self.num_particles):
                 # Update the velocity of each particle
@@ -156,10 +158,13 @@ class PSO:
             else:
                 converged += 1
             i += 1
+            stop = timeit.default_timer()
             print("Iteration: ", i)
             print("Converged: ", converged)
             print("Best solution: ", gbest)
             print("Best fitness: ", gbest_fitness)
+            print('Compute Time: ', stop - start)
+            start = stop
             if outputfile:
                 with open(outputfile, "a+") as file:
                     best_sol_string = ""
