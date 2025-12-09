@@ -20,7 +20,7 @@ run() {
 # create the results dir if it does not exist
 mkdir -p results
 
-# run 10 parallel processes
+# run 16 parallel processes
 for i in {1..16}
 do
     run $i 5 &

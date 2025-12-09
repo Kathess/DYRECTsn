@@ -5,7 +5,7 @@ Otherwise, consider switching to the main branch for using the DYRECTsn framewor
 
 ### Reference 
 For a reference to the DYRECTsn framework check out the Academic Attribution.
-If you use our or refer to our scenarios, please include the following reference in any resulting publication:
+If you use or refer to our scenarios, please include the following reference in any resulting publication:
 > Timo Salomon, Lisa Maile, Philipp Meyer, Franz Korf, Thomas C. Schmidt, "Negotiating strict latency limits for dynamic real-time services in vehicular time-sensitive networks," Vehicular Communications, vol. 57, p. 100 985, Feb. 2026. DOI: 10.1016/j.vehcom.2025.100985
 ```bibtex
 @Article{smmks-nslld-25,
